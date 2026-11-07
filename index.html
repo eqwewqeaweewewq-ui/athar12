@@ -814,7 +814,8 @@
                 </div>`;
         }
  
-        function productCard(p) {
+        function productCard(p, idx) {
+            const eager = idx !== undefined && idx < 2;   // أول صورتين فقط تتحمل فوراً
             const price = Number(p.price) || 0;
             const dv = activePercent();
             let badge = '';
@@ -850,7 +851,7 @@
                     <div class="relative w-full aspect-square rounded-xl overflow-hidden mb-3 bg-white">
                         ${badge}
                         ${stockBadge}
-                        <img src="${esc(cldUrl(mainImg, 600))}" data-orig="${esc(mainImg)}" alt="${esc(p.name)}" width="380" height="380" loading="lazy" decoding="async" class="main-img img-fade w-full h-full object-contain bg-white${soldOut ? ' opacity-60' : ''}" onload="this.classList.add('loaded')" onerror="imgErr(this,'prod')">
+                        <img src="${esc(cldUrl(mainImg, 600))}" data-orig="${esc(mainImg)}" alt="${esc(p.name)}" width="380" height="380" loading="${eager ? 'eager' : 'lazy'}"${eager ? ' fetchpriority="high"' : ''} decoding="async" class="main-img img-fade w-full h-full object-contain bg-white${soldOut ? ' opacity-60' : ''}" onload="this.classList.add('loaded')" onerror="imgErr(this,'prod')">
                         <div class="absolute top-2 right-2 bg-white/90 text-pink-600 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm">${esc(p.category)}</div>
                     </div>
                     ${thumbs}
@@ -895,14 +896,14 @@
             countBadge.textContent = filtered.length;
             noProducts.classList.toggle('hidden', filtered.length > 0);
             const limit = 'IntersectionObserver' in window ? visibleCount : filtered.length;
-            grid.innerHTML = filtered.slice(0, limit).map(productCard).join('');
+            grid.innerHTML = filtered.slice(0, limit).map((p, i) => productCard(p, i)).join('');
             markLoadedImages(grid);
             watchSentinel();
             updateLoadMore();
         }
 
         /* ===== التحميل الكسول للمنتجات: نعرض دفعة (12) وكل ما تقرب الزبونة من النهاية نضيف دفعة ثانية ===== */
-        const PAGE_SIZE = 8;
+        const PAGE_SIZE = 4;
         let visibleCount = PAGE_SIZE;
         let lastFilterKey = '';
         let lastFiltered = [];
@@ -914,7 +915,7 @@
             if (!sentinelObserver) {
                 sentinelObserver = new IntersectionObserver((entries) => {
                     if (entries.some((en) => en.isIntersecting)) loadMoreProducts();
-                }, { rootMargin: '300px 0px' });
+                }, { rootMargin: '120px 0px' });
             }
             sentinelObserver.unobserve(s);   // إعادة المراقبة تعيد فحص الموقع الحالي
             sentinelObserver.observe(s);
