@@ -17,10 +17,8 @@
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js">
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js">
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js">
-    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js">
  
-    <link rel="preload" href="https://cdn.tailwindcss.com" as="script">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.tailwindcss.com"></script>
 
     <!-- Font Awesome وخط Cairo: تحميل غير معيق (async) حتى ما يأخرون أول ظهور للواجهة -->
     <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" onload="this.onload=null;this.rel='stylesheet'">
@@ -46,6 +44,14 @@
             font-family: 'Tajawal', 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
         }
 
+        #welcome{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem;background:linear-gradient(160deg,#fdf2f8,#fff);font-family:'Cairo','Segoe UI',Tahoma,Arial,sans-serif;transition:opacity .35s ease,visibility .35s}
+        #welcome.hide{opacity:0;visibility:hidden}
+        #welcome .w-card{background:#fff;border:1px solid #fbcfe8;border-radius:28px;padding:2rem 1.5rem;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 50px -12px rgba(219,39,119,.25);animation:w-pop .4s ease}
+        #welcome .w-logo{width:72px;height:72px;margin:0 auto 14px;border-radius:20px;background:#fce7f3;color:#db2777;font-weight:900;font-size:24px;display:flex;align-items:center;justify-content:center}
+        #welcome h2{font-size:20px;font-weight:900;color:#1c1917;margin:0 0 8px}
+        #welcome p{font-size:13px;color:#78716c;margin:0 0 18px;line-height:1.7}
+        #welcome button{background:#db2777;color:#fff;border:0;border-radius:14px;padding:12px 28px;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer}
+        @keyframes w-pop{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
         html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
         body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; background-color: #fffafb; color: #44383a; }
         body.no-scroll { overflow: hidden; }
@@ -103,6 +109,27 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col bg-[#fffafb]">
+    <div id="welcome" role="dialog" aria-label="ترحيب">
+        <div class="w-card">
+            <div class="w-logo">آثار</div>
+            <h2>أهلاً بكِ في كوزمتك اثار / الجمعية 💗</h2>
+            <p>عالم العناية والتجميل الأصلي<br>توصيل لجميع المحافظات</p>
+            <button type="button" onclick="closeWelcome()">ابدأي التسوق</button>
+        </div>
+    </div>
+    <script>
+    (function(){
+        var w=document.getElementById('welcome'),t;
+        try{ if(sessionStorage.getItem('athar_welcomed')){ w.remove(); return; } }catch(e){}
+        window.closeWelcome=function(){
+            clearTimeout(t);
+            try{ sessionStorage.setItem('athar_welcomed','1'); }catch(e){}
+            w.classList.add('hide');
+            setTimeout(function(){ w.remove(); },400);
+        };
+        t=setTimeout(closeWelcome,3000);
+    })();
+    </script>
  
     <!-- الهيدر والبحث -->
     <header class="sticky top-0 z-40 bg-white shadow-sm border-b border-pink-100">
@@ -170,6 +197,9 @@
             <div id="products-grid" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4"></div>
  
             <div id="products-sentinel" class="h-1"></div>
+            <div class="text-center mt-6">
+                <button id="load-more-btn" type="button" onclick="loadMoreProducts()" class="hidden px-6 py-2.5 bg-pink-600 hover:bg-pink-700 text-white rounded-xl font-bold text-sm shadow">عرض المزيد</button>
+            </div>
 
             <div id="no-products-found" class="hidden text-center py-20">
                 <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
@@ -868,10 +898,11 @@
             grid.innerHTML = filtered.slice(0, limit).map(productCard).join('');
             markLoadedImages(grid);
             watchSentinel();
+            updateLoadMore();
         }
 
         /* ===== التحميل الكسول للمنتجات: نعرض دفعة (12) وكل ما تقرب الزبونة من النهاية نضيف دفعة ثانية ===== */
-        const PAGE_SIZE = 12;
+        const PAGE_SIZE = 8;
         let visibleCount = PAGE_SIZE;
         let lastFilterKey = '';
         let lastFiltered = [];
@@ -883,10 +914,15 @@
             if (!sentinelObserver) {
                 sentinelObserver = new IntersectionObserver((entries) => {
                     if (entries.some((en) => en.isIntersecting)) loadMoreProducts();
-                }, { rootMargin: '600px 0px' });
+                }, { rootMargin: '300px 0px' });
             }
             sentinelObserver.unobserve(s);   // إعادة المراقبة تعيد فحص الموقع الحالي
             sentinelObserver.observe(s);
+        }
+
+        function updateLoadMore() {
+            const b = $('load-more-btn');
+            if (b) b.classList.toggle('hidden', loading || $('products-grid').children.length >= lastFiltered.length);
         }
 
         function loadMoreProducts() {
@@ -897,6 +933,7 @@
             grid.insertAdjacentHTML('beforeend', lastFiltered.slice(from, visibleCount).map(productCard).join(''));
             markLoadedImages(grid);
             watchSentinel();
+            updateLoadMore();
         }
  
         /* ================= البحث والتنقل ================= */
@@ -2080,15 +2117,12 @@
                     }
 
                     // Storage اختياري عند بدء التشغيل: إذا فشل تحميل الموديول، لا نمنع Firestore من العمل.
-                    try {
-                        const storM = await import(B + 'firebase-storage.js');
+                    import(B + 'firebase-storage.js').then((storM) => {
                         fbStorage = storM;
                         storage = storM.getStorage(app);
-                    } catch (storageErr) {
+                    }).catch((storageErr) => {
                         console.error('Firebase Storage init failed:', storageErr);
-                        fbStorage = null;
-                        storage = null;
-                    }
+                    });
 
                     try {
                         await authM.signInAnonymously(authM.getAuth(app));
@@ -2229,7 +2263,11 @@
 
         // ابدأ Firebase مباشرة بعد رسم الواجهة. لا يوجد تأخير إضافي؛
         // وإذا كان هناك كاش محلي فـ Firestore يقرأه أولاً.
-        initFirebase();
+        if (hasCache) {
+            ('requestIdleCallback' in window) ? requestIdleCallback(initFirebase, { timeout: 1500 }) : setTimeout(initFirebase, 300);
+        } else {
+            initFirebase();
+        }
 
         // لا نُبقي Skeleton للأبد عند انقطاع الشبكة.
         setTimeout(finishLoadingFallback, 8000);
